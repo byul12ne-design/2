@@ -18,7 +18,11 @@ interface Exam {
   questions: Question[];
   displayCount: number;
   createdAt: number;
-  mode: 'study' | 'test'; // 모드 필드 추가
+  mode: 'study' | 'test';
+  // --- 신규 추가 필드 ---
+  requireName: boolean; // 이름 입력 필수 여부
+  sendEmail: boolean;   // 결과 이메일 수신 여부
+  adminEmail?: string;  // 수신할 관리자 이메일 주소
 }
 
 interface ExamResult {
@@ -32,7 +36,7 @@ interface ExamResult {
   answers: Record<number, number>;
   activeQuestions: Question[]; 
   createdAt: number;
-  mode: 'study' | 'test'; // 결과에도 모드 기록
+  mode: 'study' | 'test';
 }
 
 // --- Firebase Config ---
@@ -80,8 +84,14 @@ export default function App() {
   const [customExamId, setCustomExamId] = useState(''); 
   const [newExamTitle, setNewExamTitle] = useState('');
   const [newExamNotice, setNewExamNotice] = useState('');
-  const [newExamMode, setNewExamMode] = useState<'study' | 'test'>('study'); // 생성 시 모드 선택
+  const [newExamMode, setNewExamMode] = useState<'study' | 'test'>('study');
   const [displayCount, setDisplayCount] = useState('');
+  
+  // --- 신규 관리자 설정 상태 ---
+  const [requireName, setRequireName] = useState(true);
+  const [sendEmail, setSendEmail] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('');
+
   const [newQuestions, setNewQuestions] = useState<Question[]>([
     { text: '', options: ['', '', '', ''], answerIndex: 0, explanation: '' }
   ]);
@@ -141,6 +151,9 @@ export default function App() {
     setNewExamTitle(exam.title);
     setNewExamNotice(exam.notice || '');
     setNewExamMode(exam.mode || 'study');
+    setRequireName(exam.requireName !== false); // 기본값 true
+    setSendEmail(exam.sendEmail || false);
+    setAdminEmail(exam.adminEmail || '');
     setNewQuestions(JSON.parse(JSON.stringify(exam.questions)));
     setDisplayCount(exam.displayCount?.toString() || '');
     setView('admin-create');
@@ -152,14 +165,25 @@ export default function App() {
     setNewExamTitle(exam.title + " (복사본)");
     setNewExamNotice(exam.notice || '');
     setNewExamMode(exam.mode || 'study');
+    setRequireName(exam.requireName !== false);
+    setSendEmail(exam.sendEmail || false);
+    setAdminEmail(exam.adminEmail || '');
     setNewQuestions(JSON.parse(JSON.stringify(exam.questions)));
     setDisplayCount(exam.displayCount?.toString() || '');
     setView('admin-create');
     showToast('시험 내용이 복제되었습니다!');
   };
 
+  const resetAdminForm = () => {
+    setEditingExamId(null); setCustomExamId(''); setNewExamTitle(''); 
+    setNewExamNotice(''); setNewExamMode('study'); setRequireName(true);
+    setSendEmail(false); setAdminEmail(''); setDisplayCount('');
+    setNewQuestions([{ text: '', options: ['', '', '', ''], answerIndex: 0, explanation: '' }]); 
+  };
+
   const handleSaveExam = async () => {
     if (!newExamTitle.trim()) return showToast('제목을 입력해주세요.');
+    if (sendEmail && !adminEmail.trim()) return showToast('결과를 수신할 이메일 주소를 입력해주세요.');
     
     let finalId = customExamId.trim().replace(/\s+/g, '-'); 
     if (!finalId) {
@@ -174,6 +198,9 @@ export default function App() {
       title: newExamTitle, 
       notice: newExamNotice,
       mode: newExamMode,
+      requireName,
+      sendEmail,
+      adminEmail: sendEmail ? adminEmail : '',
       questions: cleanedQuestions, 
       displayCount: dCount, 
       createdAt: Date.now() 
@@ -195,9 +222,7 @@ export default function App() {
           await setDoc(doc(db, 'exams', finalId), examData);
       }
       setView('admin-dash'); showToast('저장되었습니다.');
-      setNewExamTitle(''); setCustomExamId(''); setNewExamNotice(''); 
-      setNewQuestions([{ text: '', options: ['', '', '', ''], answerIndex: 0, explanation: '' }]); 
-      setDisplayCount(''); setEditingExamId(null); setNewExamMode('study');
+      resetAdminForm();
     } catch (e) { showToast('저장 실패'); }
   };
 
@@ -247,9 +272,18 @@ export default function App() {
   };
 
   const startExam = () => {
-    if (!studentName.trim()) return showToast('이름을 입력하세요.');
     const exam = exams.find(e => e.id === currentExamId);
     if (!exam) return showToast('시험 코드를 확인하세요.');
+
+    // 이름 필수 여부 체크 로직 추가
+    if (exam.requireName && !studentName.trim()) {
+      return showToast('이름을 필수로 입력하셔야 합니다.');
+    }
+    
+    // 익명 허용일 때 이름이 없으면 '익명 응시자'로 자동 설정
+    if (!exam.requireName && !studentName.trim()) {
+      setStudentName('익명 응시자');
+    }
     
     const pool = [...exam.questions];
     const finalCount = parseInt(exam.displayCount?.toString() || pool.length.toString());
@@ -269,7 +303,7 @@ export default function App() {
     setView('student-take');
   };
 
-  // --- [학습 모드] 관련 로직 ---
+  // --- 응시 관련 로직 (학습/시험 공통) ---
   const handleStudyOptionClick = (optionIndex: number) => {
     if (isAnswerChecked || questionQueue.length === 0) return;
     const currentItem = questionQueue[0];
@@ -304,7 +338,6 @@ export default function App() {
     }
   };
 
-  // --- [시험 모드] 관련 로직 ---
   const handleTestOptionClick = (questionIndex: number, optionIndex: number) => {
     setTestAnswers(prev => ({
       ...prev,
@@ -319,7 +352,6 @@ export default function App() {
     submitExam(testAnswers);
   };
 
-  // --- 공통 제출 로직 ---
   const submitExam = async (finalAnswers: Record<number, number>) => {
     const exam = exams.find(e => e.id === currentExamId);
     if (!exam) return;
@@ -331,11 +363,12 @@ export default function App() {
 
     const score = Math.round((correctCount / activeQuestions.length) * 100);
     setStudentScore(score);
+    const finalName = studentName.trim() || '익명 응시자';
     
     await addDoc(collection(db, 'results'), {
       examId: currentExamId, 
       examTitle: exam.title, 
-      studentName, 
+      studentName: finalName, 
       score,
       correctCount: correctCount, 
       totalCount: activeQuestions.length,
@@ -344,6 +377,14 @@ export default function App() {
       createdAt: Date.now(),
       mode: exam.mode || 'study'
     });
+
+    // --- 이메일 발송 시뮬레이션 ---
+    if (exam.sendEmail && exam.adminEmail) {
+      console.log(`[이메일 발송 대기] 수신자: ${exam.adminEmail} | 응시자: ${finalName} | 점수: ${score}점`);
+      // TODO: 실제 이메일 발송은 EmailJS 라이브러리(https://www.emailjs.com/)를 설치하여 
+      // emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams) 함수를 이곳에 작성하거나,
+      // Firebase Extension 'Trigger Email'을 통해 Firestore 'mail' 컬렉션에 문서를 추가하는 방식으로 구현합니다.
+    }
     
     setView('student-result');
   };
@@ -422,7 +463,7 @@ export default function App() {
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h3 className="text-2xl font-bold">시험 목록</h3>
-                  <button onClick={() => {setEditingExamId(null); setCustomExamId(''); setNewExamTitle(''); setNewExamNotice(''); setNewExamMode('study'); setNewQuestions([{text:'', options:['','','',''], answerIndex:0, explanation: ''}]); setView('admin-create');}} className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold"><span>➕</span> 새 시험</button>
+                  <button onClick={() => {resetAdminForm(); setView('admin-create');}} className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold"><span>➕</span> 새 시험</button>
                 </div>
                 <div className="grid gap-4">
                   {exams.map(exam => (
@@ -435,7 +476,7 @@ export default function App() {
                           </span>
                         </div>
                         <p className="text-xs text-blue-500 font-mono mb-1">코드: {exam.id}</p>
-                        <p className="text-xs text-slate-400">문항: {exam.questions.length}개 / 랜덤: {exam.displayCount || '전체'}</p>
+                        <p className="text-xs text-slate-400">문항: {exam.questions.length}개 / 설정: {exam.requireName ? '실명필수' : '익명가능'} {exam.sendEmail ? '📧메일수신' : ''}</p>
                       </div>
                       <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                         <button onClick={() => copyToClipboard(exam.id)} className="px-3 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold text-sm">🔗 링크복사</button>
@@ -518,29 +559,64 @@ export default function App() {
               </div>
             </div>
 
-            {/* 모드 선택 UI 추가 */}
-            <div className="bg-white p-6 rounded-[2rem] border shadow-sm space-y-4">
-              <span className="text-xs font-black text-slate-400 tracking-widest uppercase">🎯 응시 방식 선택</span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div 
-                  onClick={() => setNewExamMode('study')}
-                  className={`cursor-pointer p-6 rounded-2xl border-2 transition-all ${newExamMode === 'study' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-100 hover:border-slate-200'}`}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xl">🔁</span>
-                    <h5 className={`font-bold ${newExamMode === 'study' ? 'text-emerald-700' : 'text-slate-700'}`}>단어장 학습형 (소거 방식)</h5>
+            {/* 기본 설정 영역 (모드/이름/이메일) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white p-6 rounded-[2rem] border shadow-sm space-y-4">
+                <span className="text-xs font-black text-slate-400 tracking-widest uppercase">🎯 응시 방식 선택</span>
+                <div className="grid grid-cols-1 gap-3">
+                  <div onClick={() => setNewExamMode('study')} className={`cursor-pointer p-4 rounded-xl border-2 transition-all flex items-center gap-3 ${newExamMode === 'study' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-100 hover:border-slate-200'}`}>
+                    <span className="text-2xl">🔁</span>
+                    <div>
+                      <h5 className={`font-bold text-sm ${newExamMode === 'study' ? 'text-emerald-700' : 'text-slate-700'}`}>학습형 (단어장/소거형)</h5>
+                      <p className="text-[10px] text-slate-500 mt-1">틀린 문제는 맞출 때까지 반복 출제됩니다.</p>
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-500">한 문제씩 풀며 정답/오답을 즉시 확인합니다. 틀린 문제는 맞출 때까지 반복 출제됩니다.</p>
+                  <div onClick={() => setNewExamMode('test')} className={`cursor-pointer p-4 rounded-xl border-2 transition-all flex items-center gap-3 ${newExamMode === 'test' ? 'border-purple-500 bg-purple-50' : 'border-slate-100 hover:border-slate-200'}`}>
+                    <span className="text-2xl">📝</span>
+                    <div>
+                      <h5 className={`font-bold text-sm ${newExamMode === 'test' ? 'text-purple-700' : 'text-slate-700'}`}>평가형 (일제 시험형)</h5>
+                      <p className="text-[10px] text-slate-500 mt-1">한 번에 전체를 풀고 제출하여 평가합니다.</p>
+                    </div>
+                  </div>
                 </div>
-                <div 
-                  onClick={() => setNewExamMode('test')}
-                  className={`cursor-pointer p-6 rounded-2xl border-2 transition-all ${newExamMode === 'test' ? 'border-purple-500 bg-purple-50' : 'border-slate-100 hover:border-slate-200'}`}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xl">📝</span>
-                    <h5 className={`font-bold ${newExamMode === 'test' ? 'text-purple-700' : 'text-slate-700'}`}>일제 평가형 (시험 방식)</h5>
+              </div>
+
+              <div className="bg-white p-6 rounded-[2rem] border shadow-sm space-y-6">
+                <span className="text-xs font-black text-slate-400 tracking-widest uppercase">⚙️ 추가 설정</span>
+                
+                <div className="space-y-4">
+                  {/* 이름 입력 필수 여부 토글 */}
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <div>
+                      <h5 className="font-bold text-sm text-slate-700">실명 입력 강제</h5>
+                      <p className="text-[10px] text-slate-500">끄면 이름을 입력하지 않아도 '익명'으로 시험을 볼 수 있습니다.</p>
+                    </div>
+                    <div className={`w-12 h-6 rounded-full relative transition-colors ${requireName ? 'bg-blue-600' : 'bg-slate-200'}`} onClick={() => setRequireName(!requireName)}>
+                      <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${requireName ? 'translate-x-7' : 'translate-x-1'}`}></div>
+                    </div>
+                  </label>
+
+                  {/* 이메일 알림 토글 */}
+                  <div className="border-t pt-4">
+                    <label className="flex items-center justify-between cursor-pointer mb-3">
+                      <div>
+                        <h5 className="font-bold text-sm text-slate-700">결과 이메일 수신 (준비중)</h5>
+                        <p className="text-[10px] text-slate-500">학생이 시험을 완료하면 등록된 이메일로 알림을 받습니다.</p>
+                      </div>
+                      <div className={`w-12 h-6 rounded-full relative transition-colors ${sendEmail ? 'bg-blue-600' : 'bg-slate-200'}`} onClick={() => setSendEmail(!sendEmail)}>
+                        <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${sendEmail ? 'translate-x-7' : 'translate-x-1'}`}></div>
+                      </div>
+                    </label>
+                    {sendEmail && (
+                      <input 
+                        type="email" 
+                        value={adminEmail} 
+                        onChange={e => setAdminEmail(e.target.value)} 
+                        placeholder="결과를 수신할 이메일 주소 입력" 
+                        className="w-full p-3 border rounded-xl text-sm outline-none focus:border-blue-500"
+                      />
+                    )}
                   </div>
-                  <p className="text-xs text-slate-500">모든 문제가 스크롤 형태로 한 번에 노출됩니다. 전체 답안을 마킹한 후 한 번에 제출하여 채점합니다.</p>
                 </div>
               </div>
             </div>
@@ -559,6 +635,7 @@ export default function App() {
                 <span>📊</span> CSV 문제 추가하기<input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
               </label>
             </div>
+            
             <div className="space-y-6">
               {newQuestions.map((q, i) => (
                 <div key={i} className="bg-white p-10 rounded-[3rem] border shadow-sm space-y-6 relative group">
@@ -605,7 +682,13 @@ export default function App() {
             )}
 
             <div className="space-y-4">
-              <input value={studentName} onChange={e => setStudentName(e.target.value)} className="w-full border-4 border-slate-100 rounded-[2rem] p-6 text-center text-2xl font-black outline-none focus:border-blue-500 transition-all shadow-sm" placeholder="성함 입력"/>
+              {/* 실명 필수/선택 여부에 따른 UI 분기 */}
+              <input 
+                value={studentName} 
+                onChange={e => setStudentName(e.target.value)} 
+                className="w-full border-4 border-slate-100 rounded-[2rem] p-6 text-center text-2xl font-black outline-none focus:border-blue-500 transition-all shadow-sm" 
+                placeholder={exams.find(e => e.id === currentExamId)?.requireName ? "성함 입력 (필수)" : "성함 입력 (선택: 미입력시 익명)"}
+              />
               <button onClick={startExam} className="w-full bg-blue-600 text-white py-6 rounded-[2rem] font-black text-xl shadow-xl hover:bg-blue-700 transition-all active:scale-95">시험 시작하기</button>
             </div>
           </div>
@@ -618,8 +701,8 @@ export default function App() {
           <div className="max-w-3xl mx-auto space-y-8 pb-32">
             <div className="bg-white/90 backdrop-blur-md p-6 rounded-[2rem] sticky top-20 border flex justify-between items-center shadow-xl z-10">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white font-black">{studentName[0]}</div>
-                <span className="font-bold text-slate-700">{studentName} 님 평가 중</span>
+                <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white font-black">{studentName ? studentName[0] : '익'}</div>
+                <span className="font-bold text-slate-700">{studentName || '익명 응시자'} 님 평가 중</span>
               </div>
               <span className="text-xs font-black px-5 py-2.5 bg-slate-900 text-white rounded-full tracking-widest">
                 마킹 완료: {Object.keys(testAnswers).length} / {activeQuestions.length}
@@ -661,14 +744,14 @@ export default function App() {
         )}
 
         {/* =========================================
-            학습 모드 (단어장 소거형 - 기존 로직 유지)
+            학습 모드 (단어장 소거형)
             ========================================= */}
         {view === 'student-take' && exams.find(e => e.id === currentExamId)?.mode !== 'test' && questionQueue.length > 0 && (
           <div className="max-w-3xl mx-auto space-y-8 pb-32">
             <div className="bg-white/90 backdrop-blur-md p-6 rounded-[2rem] sticky top-20 border flex justify-between items-center shadow-xl z-10">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center text-white font-black">{studentName[0]}</div>
-                <span className="font-bold text-slate-700">{studentName} 님 학습 중</span>
+                <div className="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center text-white font-black">{studentName ? studentName[0] : '익'}</div>
+                <span className="font-bold text-slate-700">{studentName || '익명 응시자'} 님 학습 중</span>
               </div>
               <span className="text-xs font-black px-5 py-2.5 bg-slate-900 text-white rounded-full tracking-widest">
                 진행률: {activeQuestions.length - questionQueue.length + (isAnswerChecked && currentSelectedOption === questionQueue[0].q.answerIndex ? 1 : 0)} / {activeQuestions.length}
