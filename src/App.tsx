@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, type User } from 'firebase/auth';
 import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc } from 'firebase/firestore';
+import emailjs from '@emailjs/browser'; // EmailJS 라이브러리 추가
 
 // --- 인터페이스 정의 ---
 interface Question {
@@ -19,10 +20,9 @@ interface Exam {
   displayCount: number;
   createdAt: number;
   mode: 'study' | 'test';
-  // --- 신규 추가 필드 ---
-  requireName: boolean; // 이름 입력 필수 여부
-  sendEmail: boolean;   // 결과 이메일 수신 여부
-  adminEmail?: string;  // 수신할 관리자 이메일 주소
+  requireName: boolean;
+  sendEmail: boolean;
+  adminEmail?: string;
 }
 
 interface ExamResult {
@@ -87,7 +87,6 @@ export default function App() {
   const [newExamMode, setNewExamMode] = useState<'study' | 'test'>('study');
   const [displayCount, setDisplayCount] = useState('');
   
-  // --- 신규 관리자 설정 상태 ---
   const [requireName, setRequireName] = useState(true);
   const [sendEmail, setSendEmail] = useState(false);
   const [adminEmail, setAdminEmail] = useState('');
@@ -151,7 +150,7 @@ export default function App() {
     setNewExamTitle(exam.title);
     setNewExamNotice(exam.notice || '');
     setNewExamMode(exam.mode || 'study');
-    setRequireName(exam.requireName !== false); // 기본값 true
+    setRequireName(exam.requireName !== false);
     setSendEmail(exam.sendEmail || false);
     setAdminEmail(exam.adminEmail || '');
     setNewQuestions(JSON.parse(JSON.stringify(exam.questions)));
@@ -275,12 +274,10 @@ export default function App() {
     const exam = exams.find(e => e.id === currentExamId);
     if (!exam) return showToast('시험 코드를 확인하세요.');
 
-    // 이름 필수 여부 체크 로직 추가
     if (exam.requireName && !studentName.trim()) {
       return showToast('이름을 필수로 입력하셔야 합니다.');
     }
     
-    // 익명 허용일 때 이름이 없으면 '익명 응시자'로 자동 설정
     if (!exam.requireName && !studentName.trim()) {
       setStudentName('익명 응시자');
     }
@@ -303,7 +300,6 @@ export default function App() {
     setView('student-take');
   };
 
-  // --- 응시 관련 로직 (학습/시험 공통) ---
   const handleStudyOptionClick = (optionIndex: number) => {
     if (isAnswerChecked || questionQueue.length === 0) return;
     const currentItem = questionQueue[0];
@@ -378,12 +374,27 @@ export default function App() {
       mode: exam.mode || 'study'
     });
 
-    // --- 이메일 발송 시뮬레이션 ---
+    // --- 실제 EmailJS 발송 부분 ---
     if (exam.sendEmail && exam.adminEmail) {
-      console.log(`[이메일 발송 대기] 수신자: ${exam.adminEmail} | 응시자: ${finalName} | 점수: ${score}점`);
-      // TODO: 실제 이메일 발송은 EmailJS 라이브러리(https://www.emailjs.com/)를 설치하여 
-      // emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams) 함수를 이곳에 작성하거나,
-      // Firebase Extension 'Trigger Email'을 통해 Firestore 'mail' 컬렉션에 문서를 추가하는 방식으로 구현합니다.
+      const templateParams = {
+        to_email: exam.adminEmail, // 템플릿의 {{to_email}}
+        exam_title: exam.title,    // 템플릿의 {{exam_title}}
+        student_name: finalName,   // 템플릿의 {{student_name}}
+        score: score,              // 템플릿의 {{score}}
+      };
+
+      emailjs.send(
+        'service_tteoghd',        // 전달해주신 서비스 ID
+        'template_2m8pjfh',       // 전달해주신 템플릿 ID
+        templateParams,
+        'DWRlrJcaehbtyenom'       // 전달해주신 퍼블릭 키
+      )
+      .then((response) => {
+        console.log('이메일 발송 성공!', response.status, response.text);
+      })
+      .catch((error) => {
+        console.error('이메일 발송 실패...', error);
+      });
     }
     
     setView('student-result');
@@ -559,7 +570,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* 기본 설정 영역 (모드/이름/이메일) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white p-6 rounded-[2rem] border shadow-sm space-y-4">
                 <span className="text-xs font-black text-slate-400 tracking-widest uppercase">🎯 응시 방식 선택</span>
@@ -585,7 +595,6 @@ export default function App() {
                 <span className="text-xs font-black text-slate-400 tracking-widest uppercase">⚙️ 추가 설정</span>
                 
                 <div className="space-y-4">
-                  {/* 이름 입력 필수 여부 토글 */}
                   <label className="flex items-center justify-between cursor-pointer">
                     <div>
                       <h5 className="font-bold text-sm text-slate-700">실명 입력 강제</h5>
@@ -596,11 +605,10 @@ export default function App() {
                     </div>
                   </label>
 
-                  {/* 이메일 알림 토글 */}
                   <div className="border-t pt-4">
                     <label className="flex items-center justify-between cursor-pointer mb-3">
                       <div>
-                        <h5 className="font-bold text-sm text-slate-700">결과 이메일 수신 (준비중)</h5>
+                        <h5 className="font-bold text-sm text-slate-700">결과 이메일 수신</h5>
                         <p className="text-[10px] text-slate-500">학생이 시험을 완료하면 등록된 이메일로 알림을 받습니다.</p>
                       </div>
                       <div className={`w-12 h-6 rounded-full relative transition-colors ${sendEmail ? 'bg-blue-600' : 'bg-slate-200'}`} onClick={() => setSendEmail(!sendEmail)}>
@@ -682,7 +690,6 @@ export default function App() {
             )}
 
             <div className="space-y-4">
-              {/* 실명 필수/선택 여부에 따른 UI 분기 */}
               <input 
                 value={studentName} 
                 onChange={e => setStudentName(e.target.value)} 
@@ -694,9 +701,6 @@ export default function App() {
           </div>
         )}
 
-        {/* =========================================
-            시험 모드 (일제 평가형 - 전체 스크롤 노출)
-            ========================================= */}
         {view === 'student-take' && exams.find(e => e.id === currentExamId)?.mode === 'test' && activeQuestions.length > 0 && (
           <div className="max-w-3xl mx-auto space-y-8 pb-32">
             <div className="bg-white/90 backdrop-blur-md p-6 rounded-[2rem] sticky top-20 border flex justify-between items-center shadow-xl z-10">
@@ -743,9 +747,6 @@ export default function App() {
           </div>
         )}
 
-        {/* =========================================
-            학습 모드 (단어장 소거형)
-            ========================================= */}
         {view === 'student-take' && exams.find(e => e.id === currentExamId)?.mode !== 'test' && questionQueue.length > 0 && (
           <div className="max-w-3xl mx-auto space-y-8 pb-32">
             <div className="bg-white/90 backdrop-blur-md p-6 rounded-[2rem] sticky top-20 border flex justify-between items-center shadow-xl z-10">
