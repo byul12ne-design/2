@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged, User } from 'firebase/auth';
+import { getAuth, signInAnonymously, onAuthStateChanged, type User } from 'firebase/auth';
 import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc } from 'firebase/firestore';
 
 // --- 인터페이스 정의 ---
@@ -257,7 +257,6 @@ export default function App() {
     if (isAnswerChecked || questionQueue.length === 0) return; // 이미 체크된 상태면 무시
 
     const currentItem = questionQueue[0];
-    const isCorrect = optionIndex === currentItem.q.answerIndex;
     
     setCurrentSelectedOption(optionIndex);
     setIsAnswerChecked(true);
