@@ -35,6 +35,7 @@ interface Exam {
   createdAt: number;
   mode: 'study' | 'test';
   requireName: boolean;
+  recordScores?: boolean; // 💡 성적 기록 여부 옵션 추가
 }
 
 interface ExamResult {
@@ -99,6 +100,7 @@ export default function App() {
   const [newExamMode, setNewExamMode] = useState<'study' | 'test'>('study');
   const [displayCount, setDisplayCount] = useState('');
   const [requireName, setRequireName] = useState(true);
+  const [recordScores, setRecordScores] = useState(true); // 💡 성적 기록 상태 추가
   
   const [selectedResultDetail, setSelectedResultDetail] = useState<ExamResult | null>(null);
 
@@ -173,6 +175,7 @@ export default function App() {
     setNewExamNotice(exam.notice || '');
     setNewExamMode(exam.mode || 'study');
     setRequireName(exam.requireName !== false);
+    setRecordScores(exam.recordScores !== false); // 불러오기
     setNewQuestions(JSON.parse(JSON.stringify(exam.questions)));
     setDisplayCount(exam.displayCount?.toString() || '');
     setView('admin-create');
@@ -185,6 +188,7 @@ export default function App() {
     setNewExamNotice(exam.notice || '');
     setNewExamMode(exam.mode || 'study');
     setRequireName(exam.requireName !== false);
+    setRecordScores(exam.recordScores !== false);
     setNewQuestions(JSON.parse(JSON.stringify(exam.questions)));
     setDisplayCount(exam.displayCount?.toString() || '');
     setView('admin-create');
@@ -194,6 +198,7 @@ export default function App() {
   const resetAdminForm = () => {
     setEditingExamId(null); setCustomExamId(''); setNewExamTitle(''); 
     setNewExamNotice(''); setNewExamMode('study'); setRequireName(true);
+    setRecordScores(true);
     setDisplayCount('');
     setNewQuestions([{ text: '', options: ['', '', '', ''], answerIndex: 0, explanation: '' }]); 
   };
@@ -307,6 +312,7 @@ export default function App() {
       notice: newExamNotice,
       mode: newExamMode,
       requireName,
+      recordScores, // 💡 저장
       questions: cleanedQuestions, 
       displayCount: dCount, 
       createdAt: Date.now() 
@@ -423,18 +429,21 @@ export default function App() {
     setStudentScore(score);
     const finalName = studentName.trim() || '익명 응시자';
     
-    await addDoc(collection(db, 'results'), {
-      examId: currentExamId, 
-      examTitle: exam.title, 
-      studentName: finalName, 
-      score,
-      correctCount: correctCount, 
-      totalCount: activeQuestions.length,
-      answers: finalAnswers, 
-      activeQuestions, 
-      createdAt: Date.now(),
-      mode: exam.mode || 'study'
-    });
+    // 💡 성적 기록 옵션이 꺼져있으면 DB에 저장하지 않음
+    if (exam.recordScores !== false) {
+      await addDoc(collection(db, 'results'), {
+        examId: currentExamId, 
+        examTitle: exam.title, 
+        studentName: finalName, 
+        score,
+        correctCount: correctCount, 
+        totalCount: activeQuestions.length,
+        answers: finalAnswers, 
+        activeQuestions, 
+        createdAt: Date.now(),
+        mode: exam.mode || 'study'
+      });
+    }
     
     setView('student-result');
   };
@@ -460,6 +469,25 @@ export default function App() {
       .sort((a, b) => b.rate - a.rate);
   };
 
+  // 💡 전체 기록 삭제 로직
+  const handleBulkDeleteResults = async () => {
+    const targetResults = getFilteredResults();
+    if (targetResults.length === 0) return showToast('삭제할 기록이 없습니다.');
+    
+    if (window.confirm(`정말 선택한 시험의 응시 기록 ${targetResults.length}개를 모두 삭제하시겠습니까?\n(이 작업은 복구할 수 없습니다)`)) {
+      try {
+        const batch = writeBatch(db);
+        targetResults.forEach(r => {
+          batch.delete(doc(db, 'results', r.id));
+        });
+        await batch.commit();
+        showToast('해당 시험의 모든 응시 기록이 삭제되었습니다.');
+      } catch (e) {
+        showToast('기록 삭제 중 오류가 발생했습니다.');
+      }
+    }
+  };
+
   const exportToCSV = () => {
     const targetExam = exams.find(e => e.id === selectedAnalyticsExamId);
     if (!targetExam) return showToast('선택된 시험을 찾을 수 없습니다.');
@@ -469,7 +497,6 @@ export default function App() {
 
     let headers = ["시험명", "응시 모드", "응시자 이름", "최종 점수", "제출 일시"];
     
-    // 💡 [수정됨] 사용하지 않는 변수 에러(TS6133) 해결을 위해 첫 번째 인자를 '_'로 처리
     targetExam.questions.forEach((_, idx) => {
       headers.push(`[Q${idx+1}] 정/오답`);
       headers.push(`[Q${idx+1}] 제출한 답안`);
@@ -546,16 +573,16 @@ export default function App() {
           <main className="p-6 max-w-5xl mx-auto w-full flex-1">
             {view === 'home' && (
               <div className="flex flex-col items-center gap-12 py-20 text-center">
-                <h2 className="text-5xl font-black text-slate-800">Quiz Master</h2>
+                <h2 className="text-4xl sm:text-5xl font-black text-slate-800 break-keep">뷔르트 제품 Quiz</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl">
-                  <button onClick={() => setView('admin-login')} className="p-10 bg-white border rounded-[2.5rem] shadow-sm hover:border-blue-500 transition-all flex flex-col items-center gap-4 group">
-                    <span className="text-6xl group-hover:scale-110 transition-transform">👨‍🏫</span><span className="text-xl font-bold">선생님 / 관리자</span>
+                  <button onClick={() => setView('admin-login')} className="p-10 bg-white border rounded-[2.5rem] shadow-sm hover:border-blue-500 transition-all flex flex-col justify-center items-center gap-4 group">
+                    <span className="text-2xl font-bold text-slate-800">관리자</span>
                   </button>
-                  <div className="p-10 bg-white border rounded-[2.5rem] shadow-sm flex flex-col items-center gap-4">
-                    <span className="text-6xl">✅</span>
+                  <div className="p-10 bg-white border rounded-[2.5rem] shadow-sm flex flex-col justify-center items-center gap-4">
+                    <span className="text-2xl font-bold text-slate-800 mb-2">시험 응시</span>
                     <div className="flex gap-2 w-full">
-                      <input value={currentExamId} onChange={e => setCurrentExamId(e.target.value)} placeholder="시험 코드 입력" className="border rounded-xl px-4 py-2 w-full text-sm outline-none"/>
-                      <button onClick={() => currentExamId && setView('student-entry')} className="bg-green-600 text-white px-4 rounded-xl font-bold">입장</button>
+                      <input value={currentExamId} onChange={e => setCurrentExamId(e.target.value)} placeholder="시험 코드 입력" className="border rounded-xl px-4 py-3 w-full text-sm outline-none"/>
+                      <button onClick={() => currentExamId && setView('student-entry')} className="bg-green-600 text-white px-5 py-3 rounded-xl font-bold whitespace-nowrap shrink-0">입장</button>
                     </div>
                   </div>
                 </div>
@@ -595,7 +622,7 @@ export default function App() {
                               </span>
                             </div>
                             <p className="text-xs text-blue-500 font-mono mb-1">코드: {exam.id}</p>
-                            <p className="text-xs text-slate-400">문항: {exam.questions.length}개 / 설정: {exam.requireName ? '실명필수' : '익명가능'}</p>
+                            <p className="text-xs text-slate-400">문항: {exam.questions.length}개 / 설정: {exam.requireName ? '실명필수' : '익명가능'} / 기록: {exam.recordScores !== false ? '저장함' : '저장안함'}</p>
                           </div>
                           <div className="flex flex-wrap gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                             <button onClick={() => copyToClipboard(exam.id)} className="flex-1 sm:flex-none px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-bold text-sm transition-colors text-center whitespace-nowrap">🔗 링크복사</button>
@@ -635,7 +662,6 @@ export default function App() {
 
                      <div className="space-y-4">
                        <h4 className="font-bold text-slate-700">보관된 문제 목록 (총 {questionBank.length}개)</h4>
-                       {/* 💡 [수정됨] 사용하지 않는 변수 에러(TS6133) 해결을 위해 idx 제거 */}
                        {questionBank.map((q) => (
                          <div key={q.id} className="bg-white p-5 rounded-2xl border flex flex-col sm:flex-row justify-between gap-4 group hover:border-blue-300 transition-colors">
                            <div className="flex-1">
@@ -667,9 +693,15 @@ export default function App() {
                           {exams.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
                         </select>
                       </div>
-                      <button onClick={exportToCSV} className="w-full sm:w-auto text-sm font-bold text-blue-600 px-5 py-3 bg-blue-50 hover:bg-blue-100 transition-colors rounded-xl whitespace-nowrap shadow-sm border border-blue-100">
-                        📊 엑셀 전체 상세 다운로드
-                      </button>
+                      <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                        <button onClick={exportToCSV} className="w-full sm:w-auto text-sm font-bold text-blue-600 px-5 py-3 bg-blue-50 hover:bg-blue-100 transition-colors rounded-xl whitespace-nowrap shadow-sm border border-blue-100">
+                          📊 엑셀 전체 상세 다운로드
+                        </button>
+                        {/* 💡 전체 삭제 버튼 추가 */}
+                        <button onClick={handleBulkDeleteResults} className="w-full sm:w-auto text-sm font-bold text-red-600 px-5 py-3 bg-red-50 hover:bg-red-100 transition-colors rounded-xl whitespace-nowrap shadow-sm border border-red-100">
+                          🗑️ 전체 기록 삭제
+                        </button>
+                      </div>
                     </div>
 
                     <div className="lg:col-span-2 space-y-4">
@@ -740,7 +772,7 @@ export default function App() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                   <button onClick={() => setView('admin-dash')} className="text-2xl hover:bg-white p-2 rounded-full transition-colors shrink-0">⬅️</button>
                   <div className="flex-1 w-full flex flex-col gap-1">
-                     <input value={newExamTitle} onChange={e => setNewExamTitle(e.target.value)} className="w-full text-2xl sm:text-3xl font-black outline-none bg-transparent border-b-2 border-transparent focus:border-blue-50 transition-all text-slate-800" placeholder="시험 제목"/>
+                     <input value={newExamTitle} onChange={e => setNewExamTitle(e.target.value)} className="w-full text-2xl sm:text-3xl font-black outline-none bg-transparent border-b-2 border-transparent focus:border-blue-500 transition-all text-slate-800" placeholder="시험 제목"/>
                      <div className="flex flex-wrap items-center gap-2 mt-2">
                         <span className="text-xs font-bold text-slate-400">시험 코드(ID):</span>
                         <input value={customExamId} onChange={e => setCustomExamId(e.target.value)} className="text-xs font-mono bg-blue-50 text-blue-600 px-2 py-1 rounded outline-none border border-blue-100 min-w-[150px]" placeholder="미입력시 자동생성"/>
@@ -779,6 +811,16 @@ export default function App() {
                         </div>
                         <div className={`w-12 h-6 rounded-full relative transition-colors shrink-0 ${requireName ? 'bg-blue-600' : 'bg-slate-200'}`} onClick={() => setRequireName(!requireName)}>
                           <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${requireName ? 'translate-x-7' : 'translate-x-1'}`}></div>
+                        </div>
+                      </label>
+                      {/* 💡 성적 기록 저장 설정 토글 추가 */}
+                      <label className="flex items-center justify-between cursor-pointer border-t pt-4">
+                        <div className="pr-4">
+                          <h5 className="font-bold text-sm text-slate-700">성적 데이터 저장</h5>
+                          <p className="text-[10px] text-slate-500 mt-1">끄면 학생의 점수가 통계에 남지 않고 학생 본인 화면에만 표시됩니다.</p>
+                        </div>
+                        <div className={`w-12 h-6 rounded-full relative transition-colors shrink-0 ${recordScores ? 'bg-blue-600' : 'bg-slate-200'}`} onClick={() => setRecordScores(!recordScores)}>
+                          <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${recordScores ? 'translate-x-7' : 'translate-x-1'}`}></div>
                         </div>
                       </label>
                     </div>
