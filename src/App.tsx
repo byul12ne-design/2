@@ -5,12 +5,10 @@ import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc
 
 // ==========================================
 // 🛠️ [개별 설정] 브랜드 커스터마이징 영역
-// 아래 따옴표 안에 원하는 이미지 주소(URL)를 넣으세요.
-// 비워두면("") 기본 텍스트나 이모지가 출력됩니다.
 // ==========================================
 const APP_CONFIG = {
-  logoText: "스마트 문제은행",
-  logoImageUrl: "", // 예: "https://mysite.com/logo.png"
+  logoText: "뷔르트 사내 평가", // 로고 이미지를 불러오는 중이거나 엑스박스가 뜰 때 나타날 글자
+  logoImageUrl: "https://eshop.wuerth.de/is-bin/intershop.static/WFS/1401-B1-Site/-/en_US/webkit_bootstrap/dist/img/wuerth-logo.svg", // 상단 바 뷔르트 로고 적용 완료!
   mainIconUrl: "",  // 예: "https://mysite.com/main-icon.png" (메인 화면 트로피 대체)
   bgImageUrl: "",   // 예: "https://mysite.com/background.jpg" (전체 배경)
 };
