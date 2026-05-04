@@ -561,10 +561,10 @@ export default function App() {
           <main className="p-6 max-w-5xl mx-auto w-full flex-1">
             {view === 'home' && (
               <div className="flex flex-col items-center gap-12 py-20 text-center">
-                <h2 className="text-5xl font-black text-slate-800">뷔르트 제품 Quiz</h2>
+                <h2 className="text-5xl font-black text-slate-800">Quiz Master</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl">
                   <button onClick={() => setView('admin-login')} className="p-10 bg-white border rounded-[2.5rem] shadow-sm hover:border-blue-500 transition-all flex flex-col items-center gap-4 group">
-                    <span className="text-6xl group-hover:scale-110 transition-transform">👨‍🏫</span><span className="text-xl font-bold">관리자</span>
+                    <span className="text-6xl group-hover:scale-110 transition-transform">👨‍🏫</span><span className="text-xl font-bold">선생님 / 관리자</span>
                   </button>
                   <div className="p-10 bg-white border rounded-[2.5rem] shadow-sm flex flex-col items-center gap-4">
                     <span className="text-6xl">✅</span>
