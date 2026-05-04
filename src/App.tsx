@@ -13,7 +13,6 @@ const APP_CONFIG = {
   logoImageUrl: "", // 예: "https://mysite.com/logo.png"
   mainIconUrl: "",  // 예: "https://mysite.com/main-icon.png" (메인 화면 트로피 대체)
   bgImageUrl: "",   // 예: "https://mysite.com/background.jpg" (전체 배경)
-  primaryColorClass: "blue-600", // 기본 색상 클래스 (변경 방법은 하단 설명 참고)
 };
 
 // --- 인터페이스 정의 ---
@@ -49,7 +48,7 @@ interface ExamResult {
   mode: 'study' | 'test';
 }
 
-// --- Firebase Config (그대로 유지) ---
+// --- Firebase Config ---
 const firebaseConfig = {
   apiKey: "AIzaSyAIBp1x4DalwhtlFnYjnz2TisQBA0wVBSg",
   authDomain: "product-exam-9b794.firebaseapp.com",
@@ -417,7 +416,7 @@ export default function App() {
 
       <div className="relative z-10">
         <nav className="p-4 bg-white/90 backdrop-blur-md border-b flex justify-between items-center sticky top-0 z-50 shadow-sm">
-          <h1 onClick={() => setView('home')} className={`text-[#CC0000] font-bold flex items-center gap-2 cursor-pointer`}>
+          <h1 onClick={() => setView('home')} className={`text-blue-600 font-bold flex items-center gap-2 cursor-pointer`}>
             {APP_CONFIG.logoImageUrl ? (
               <img src={APP_CONFIG.logoImageUrl} alt="Logo" className="h-8 object-contain" />
             ) : (
@@ -432,7 +431,7 @@ export default function App() {
             <div className="flex flex-col items-center gap-12 py-20 text-center">
               <h2 className="text-5xl font-black text-slate-800">Quiz Master</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl">
-                <button onClick={() => setView('admin-login')} className="p-10 bg-white border rounded-[2.5rem] shadow-sm hover:border-[#CC0000] transition-all flex flex-col items-center gap-4 group">
+                <button onClick={() => setView('admin-login')} className="p-10 bg-white border rounded-[2.5rem] shadow-sm hover:border-blue-500 transition-all flex flex-col items-center gap-4 group">
                   <span className="text-6xl group-hover:scale-110 transition-transform">👨‍🏫</span><span className="text-xl font-bold">선생님 / 관리자</span>
                 </button>
                 <div className="p-10 bg-white border rounded-[2.5rem] shadow-sm flex flex-col items-center gap-4">
@@ -449,23 +448,23 @@ export default function App() {
           {view === 'admin-login' && (
             <div className="max-w-md mx-auto py-20 text-center">
               <h2 className="text-2xl font-bold mb-8 text-slate-800">관리자 인증</h2>
-              <input type="password" value={adminPasswordInput} onChange={e => setAdminPasswordInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdminLogin()} className="w-full border-2 rounded-2xl p-4 mb-4 text-center text-lg outline-none focus:border-[#CC0000]" placeholder="비밀번호를 입력하세요"/>
-              <button onClick={handleAdminLogin} className="w-full bg-[#CC0000] text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-colors">접속</button>
+              <input type="password" value={adminPasswordInput} onChange={e => setAdminPasswordInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdminLogin()} className="w-full border-2 rounded-2xl p-4 mb-4 text-center text-lg outline-none focus:border-blue-500" placeholder="비밀번호를 입력하세요"/>
+              <button onClick={handleAdminLogin} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-colors">접속</button>
             </div>
           )}
 
           {view === 'admin-dash' && (
             <div className="space-y-8">
               <div className="flex bg-white p-2 rounded-2xl border w-fit shadow-sm">
-                <button onClick={() => setAdminTab('exams')} className={`px-6 py-2 rounded-xl font-bold transition-all ${adminTab === 'exams' ? 'bg-[#CC0000] text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}>시험 관리</button>
-                <button onClick={() => setAdminTab('analytics')} className={`px-6 py-2 rounded-xl font-bold transition-all ${adminTab === 'analytics' ? 'bg-[#CC0000] text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}>교육 통계 분석</button>
+                <button onClick={() => setAdminTab('exams')} className={`px-6 py-2 rounded-xl font-bold transition-all ${adminTab === 'exams' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}>시험 관리</button>
+                <button onClick={() => setAdminTab('analytics')} className={`px-6 py-2 rounded-xl font-bold transition-all ${adminTab === 'analytics' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}>교육 통계 분석</button>
               </div>
 
               {adminTab === 'exams' ? (
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
                     <h3 className="text-2xl font-bold text-slate-800">시험 목록</h3>
-                    <button onClick={() => {resetAdminForm(); setView('admin-create');}} className="bg-[#CC0000] hover:bg-blue-700 transition-colors text-white px-5 py-2.5 rounded-xl font-bold shadow-md"><span>➕</span> 새 시험</button>
+                    <button onClick={() => {resetAdminForm(); setView('admin-create');}} className="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-5 py-2.5 rounded-xl font-bold shadow-md"><span>➕</span> 새 시험</button>
                   </div>
                   <div className="grid gap-4">
                     {exams.map(exam => (
@@ -481,7 +480,7 @@ export default function App() {
                           <p className="text-xs text-slate-400">문항: {exam.questions.length}개 / 설정: {exam.requireName ? '실명필수' : '익명가능'}</p>
                         </div>
                         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                          <button onClick={() => copyToClipboard(exam.id)} className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-[#CC0000] rounded-xl font-bold text-sm transition-colors">🔗 링크복사</button>
+                          <button onClick={() => copyToClipboard(exam.id)} className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-bold text-sm transition-colors">🔗 링크복사</button>
                           <button onClick={() => handleCopyExam(exam)} className="p-2 text-blue-400 hover:bg-blue-50 rounded-xl transition-colors">📋</button>
                           <button onClick={() => handleEditExam(exam)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl transition-colors">✏️</button>
                           <button onClick={async () => {if(window.confirm('삭제하시겠습니까?')) await deleteDoc(doc(db, 'exams', exam.id))}} className="p-2 text-red-400 hover:bg-red-50 rounded-xl transition-colors">🗑️</button>
@@ -495,7 +494,7 @@ export default function App() {
                   <div className="lg:col-span-2 space-y-6">
                     <div className="flex justify-between items-center">
                       <h3 className="text-2xl font-bold text-slate-800">응시자 현황</h3>
-                      <button onClick={exportToCSV} className="text-sm font-bold text-[#CC0000] px-4 py-2 bg-blue-50 hover:bg-blue-100 transition-colors rounded-xl">📊 엑셀 다운로드</button>
+                      <button onClick={exportToCSV} className="text-sm font-bold text-blue-600 px-4 py-2 bg-blue-50 hover:bg-blue-100 transition-colors rounded-xl">📊 엑셀 다운로드</button>
                     </div>
                     <div className="bg-white rounded-[2rem] border overflow-hidden shadow-sm">
                       <table className="w-full text-left">
@@ -521,12 +520,12 @@ export default function App() {
                                 {r.examTitle}
                                 <span className="block text-[10px] text-slate-400 mt-1">{r.mode === 'test' ? '일제 평가형' : '학습 소거형'}</span>
                               </td>
-                              <td className="px-6 py-4 font-bold text-[#CC0000]">{r.score}점</td>
+                              <td className="px-6 py-4 font-bold text-blue-600">{r.score}점</td>
                               <td className="px-6 py-4 text-right text-xs text-slate-400">{new Date(r.createdAt).toLocaleDateString()}</td>
                               <td className="px-6 py-4 text-center">
                                 <button 
                                   onClick={() => setSelectedResultDetail(r)} 
-                                  className="text-xs font-bold text-[#CC0000] bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+                                  className="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
                                 >
                                   상세보기
                                 </button>
@@ -562,10 +561,10 @@ export default function App() {
               <div className="flex items-center gap-4">
                 <button onClick={() => setView('admin-dash')} className="text-2xl hover:bg-white p-2 rounded-full transition-colors">⬅️</button>
                 <div className="flex-1 flex flex-col gap-1">
-                   <input value={newExamTitle} onChange={e => setNewExamTitle(e.target.value)} className="text-3xl font-black outline-none bg-transparent border-b-2 border-transparent focus:border-[#CC0000] transition-all text-slate-800" placeholder="시험 제목"/>
+                   <input value={newExamTitle} onChange={e => setNewExamTitle(e.target.value)} className="text-3xl font-black outline-none bg-transparent border-b-2 border-transparent focus:border-blue-500 transition-all text-slate-800" placeholder="시험 제목"/>
                    <div className="flex items-center gap-2 mt-2">
                       <span className="text-xs font-bold text-slate-400">시험 코드(ID):</span>
-                      <input value={customExamId} onChange={e => setCustomExamId(e.target.value)} className="text-xs font-mono bg-blue-50 text-[#CC0000] px-2 py-1 rounded outline-none border border-blue-100 w-fit" placeholder="미입력시 자동생성"/>
+                      <input value={customExamId} onChange={e => setCustomExamId(e.target.value)} className="text-xs font-mono bg-blue-50 text-blue-600 px-2 py-1 rounded outline-none border border-blue-100 w-fit" placeholder="미입력시 자동생성"/>
                    </div>
                 </div>
               </div>
@@ -599,7 +598,7 @@ export default function App() {
                         <h5 className="font-bold text-sm text-slate-700">실명 입력 강제</h5>
                         <p className="text-[10px] text-slate-500">끄면 이름을 입력하지 않아도 '익명'으로 시험을 볼 수 있습니다.</p>
                       </div>
-                      <div className={`w-12 h-6 rounded-full relative transition-colors ${requireName ? 'bg-[#CC0000]' : 'bg-slate-200'}`} onClick={() => setRequireName(!requireName)}>
+                      <div className={`w-12 h-6 rounded-full relative transition-colors ${requireName ? 'bg-blue-600' : 'bg-slate-200'}`} onClick={() => setRequireName(!requireName)}>
                         <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${requireName ? 'translate-x-7' : 'translate-x-1'}`}></div>
                       </div>
                     </label>
@@ -634,7 +633,7 @@ export default function App() {
                       {q.options.map((opt, oi) => (
                         <div key={oi} className="relative">
                           <input value={opt} onChange={e => setNewQuestions(prev => prev.map((item, idx) => idx === i ? { ...item, options: item.options.map((o, oIdx) => oIdx === oi ? e.target.value : o) } : item))} className={`w-full p-4 pl-12 rounded-2xl border-2 outline-none transition-all text-slate-700 ${q.answerIndex === oi ? 'border-blue-600 bg-blue-50/50' : 'border-slate-50 bg-slate-50 focus:border-slate-200'}`} placeholder={`보기 ${oi+1}`}/>
-                          <button onClick={() => setNewQuestions(prev => prev.map((item, iIdx) => iIdx === i ? { ...item, answerIndex: oi } : item))} className={`absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-2 font-black text-[10px] flex items-center justify-center transition-colors ${q.answerIndex === oi ? 'bg-[#CC0000] border-blue-600 text-white' : 'border-slate-300 text-slate-300 hover:border-blue-300'}`}>{oi+1}</button>
+                          <button onClick={() => setNewQuestions(prev => prev.map((item, iIdx) => iIdx === i ? { ...item, answerIndex: oi } : item))} className={`absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-2 font-black text-[10px] flex items-center justify-center transition-colors ${q.answerIndex === oi ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 text-slate-300 hover:border-blue-300'}`}>{oi+1}</button>
                         </div>
                       ))}
                     </div>
@@ -664,7 +663,7 @@ export default function App() {
               {exams.find(e => e.id === currentExamId)?.notice && (
                 <div className="bg-blue-50 p-8 rounded-[2.5rem] border border-blue-100 space-y-3 relative overflow-hidden shadow-inner">
                   <div className="absolute top-0 left-0 w-1 h-full bg-blue-400"></div>
-                  <h4 className="text-xs font-black text-[#CC0000] tracking-widest uppercase flex items-center gap-2">📢 선생님 공지사항</h4>
+                  <h4 className="text-xs font-black text-blue-600 tracking-widest uppercase flex items-center gap-2">📢 선생님 공지사항</h4>
                   <p className="text-slate-600 font-medium leading-relaxed whitespace-pre-wrap italic">
                     "{exams.find(e => e.id === currentExamId)?.notice}"
                   </p>
@@ -675,10 +674,10 @@ export default function App() {
                 <input 
                   value={studentName} 
                   onChange={e => setStudentName(e.target.value)} 
-                  className="w-full border-4 border-white bg-white/80 backdrop-blur-sm rounded-[2rem] p-6 text-center text-2xl font-black outline-none focus:border-[#CC0000] transition-all shadow-md text-slate-800" 
+                  className="w-full border-4 border-white bg-white/80 backdrop-blur-sm rounded-[2rem] p-6 text-center text-2xl font-black outline-none focus:border-blue-500 transition-all shadow-md text-slate-800" 
                   placeholder={exams.find(e => e.id === currentExamId)?.requireName ? "성함 입력 (필수)" : "성함 입력 (선택: 미입력시 익명)"}
                 />
-                <button onClick={startExam} className="w-full bg-[#CC0000] text-white py-6 rounded-[2rem] font-black text-xl shadow-xl hover:bg-blue-700 transition-all active:scale-95">시험 시작하기</button>
+                <button onClick={startExam} className="w-full bg-blue-600 text-white py-6 rounded-[2rem] font-black text-xl shadow-xl hover:bg-blue-700 transition-all active:scale-95">시험 시작하기</button>
               </div>
             </div>
           )}
@@ -810,9 +809,9 @@ export default function App() {
                 {exams.find(e => e.id === currentExamId)?.mode === 'test' ? '평가가 종료되었습니다!' : '모든 문제를 마스터했습니다!'}
               </h2>
               <div className="bg-white p-16 rounded-[4rem] shadow-2xl border-8 border-blue-50 relative overflow-hidden">
-                 <div className="absolute top-0 left-0 w-full h-2 bg-[#CC0000]"></div>
+                 <div className="absolute top-0 left-0 w-full h-2 bg-blue-600"></div>
                  <p className="text-slate-400 font-black text-lg mb-4 uppercase tracking-widest">최종 점수 (첫 시도 기준)</p>
-                 <div className="text-[12rem] font-black text-[#CC0000] leading-none">{studentScore}<span className="text-4xl text-slate-200 ml-4 font-normal">pts</span></div>
+                 <div className="text-[12rem] font-black text-blue-600 leading-none">{studentScore}<span className="text-4xl text-slate-200 ml-4 font-normal">pts</span></div>
               </div>
               
               <button onClick={() => {setStudentName(''); setView('home'); window.history.replaceState({}, '', window.location.pathname);}} className="bg-slate-900 text-white px-12 py-5 rounded-[2rem] font-black hover:bg-slate-800 transition-all mt-10 shadow-xl active:scale-95">메인으로 돌아가기</button>
@@ -827,7 +826,7 @@ export default function App() {
               <div className="flex justify-between items-center mb-6 shrink-0 border-b pb-4">
                 <div>
                   <h3 className="text-2xl font-black text-slate-800">{selectedResultDetail.studentName} 님의 상세 결과</h3>
-                  <p className="text-sm text-[#CC0000] font-bold mt-2 bg-blue-50 px-3 py-1 rounded-lg inline-block">{selectedResultDetail.examTitle} ({selectedResultDetail.score}점)</p>
+                  <p className="text-sm text-blue-600 font-bold mt-2 bg-blue-50 px-3 py-1 rounded-lg inline-block">{selectedResultDetail.examTitle} ({selectedResultDetail.score}점)</p>
                 </div>
                 <button onClick={() => setSelectedResultDetail(null)} className="w-12 h-12 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full flex items-center justify-center font-bold transition-colors text-xl">✕</button>
               </div>
