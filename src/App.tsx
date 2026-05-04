@@ -79,23 +79,18 @@ export default function App() {
   const [currentExamId, setCurrentExamId] = useState('');
   const [studentName, setStudentName] = useState('');
   
-  // --- 통계 분석 탭: 선택된 시험 필터 상태 ---
   const [selectedAnalyticsExamId, setSelectedAnalyticsExamId] = useState<string>('');
 
-  // --- 공통 응시 상태 ---
   const [activeQuestions, setActiveQuestions] = useState<Question[]>([]); 
   const [firstAttemptAnswers, setFirstAttemptAnswers] = useState<Record<number, number>>({}); 
   const [studentScore, setStudentScore] = useState(0);
 
-  // --- [학습 모드] 전용 상태 ---
   const [questionQueue, setQuestionQueue] = useState<{q: Question, originalIndex: number}[]>([]); 
   const [isAnswerChecked, setIsAnswerChecked] = useState(false); 
   const [currentSelectedOption, setCurrentSelectedOption] = useState<number | null>(null); 
 
-  // --- [시험 모드] 전용 상태 ---
   const [testAnswers, setTestAnswers] = useState<Record<number, number>>({});
 
-  // --- 관리자 상태 ---
   const [adminPasswordInput, setAdminPasswordInput] = useState(''); 
   const [editingExamId, setEditingExamId] = useState<string | null>(null);
   const [customExamId, setCustomExamId] = useState(''); 
@@ -107,12 +102,10 @@ export default function App() {
   
   const [selectedResultDetail, setSelectedResultDetail] = useState<ExamResult | null>(null);
 
-  // 시험 작성 시 현재 추가된 문항들
   const [newQuestions, setNewQuestions] = useState<Question[]>([
     { text: '', options: ['', '', '', ''], answerIndex: 0, explanation: '' }
   ]);
 
-  // 문제 창고 관련 상태
   const [newBankQuestion, setNewBankQuestion] = useState<Question>({ text: '', options: ['', '', '', ''], answerIndex: 0, explanation: '' });
   const [isBankModalOpen, setIsBankModalOpen] = useState(false);
   const [selectedBankQuestions, setSelectedBankQuestions] = useState<Set<string>>(new Set());
@@ -142,7 +135,6 @@ export default function App() {
     const unsubExams = onSnapshot(collection(db, 'exams'), (snapshot) => {
       const loadedExams = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Exam)).sort((a, b) => b.createdAt - a.createdAt);
       setExams(loadedExams);
-      // 통계 탭 초기 진입 시 최신 시험을 기본으로 선택
       if (loadedExams.length > 0 && !selectedAnalyticsExamId) {
         setSelectedAnalyticsExamId(loadedExams[0].id);
       }
@@ -447,7 +439,6 @@ export default function App() {
     setView('student-result');
   };
 
-  // 특정 시험 기준으로 통계 데이터 필터링
   const getFilteredResults = () => {
     return results.filter(r => r.examId === selectedAnalyticsExamId);
   };
@@ -469,7 +460,6 @@ export default function App() {
       .sort((a, b) => b.rate - a.rate);
   };
 
-  // 상세 보기 데이터까지 포함한 CSV 다운로드 (랜덤 출제 매핑 완벽 대응)
   const exportToCSV = () => {
     const targetExam = exams.find(e => e.id === selectedAnalyticsExamId);
     if (!targetExam) return showToast('선택된 시험을 찾을 수 없습니다.');
@@ -477,11 +467,10 @@ export default function App() {
     const targetResults = getFilteredResults();
     if (targetResults.length === 0) return showToast('다운로드할 응시 기록이 없습니다.');
 
-    // 1. 기본 열(Column) 구성
     let headers = ["시험명", "응시 모드", "응시자 이름", "최종 점수", "제출 일시"];
     
-    // 2. 선택된 시험의 기준 문항을 순회하며 상세 열(Column) 헤더 추가
-    targetExam.questions.forEach((q, idx) => {
+    // 💡 [수정됨] 사용하지 않는 변수 에러(TS6133) 해결을 위해 첫 번째 인자를 '_'로 처리
+    targetExam.questions.forEach((_, idx) => {
       headers.push(`[Q${idx+1}] 정/오답`);
       headers.push(`[Q${idx+1}] 제출한 답안`);
     });
@@ -495,12 +484,10 @@ export default function App() {
         new Date(r.createdAt).toLocaleString()
       ];
       
-      // 학생의 문제지가 랜덤으로 섞여있거나 일부만 출제되었을 수 있으므로 원본 텍스트 매핑으로 정답을 찾음
       targetExam.questions.forEach((examQ) => {
         const studentQIdx = r.activeQuestions?.findIndex(aq => aq.text === examQ.text);
         
         if (studentQIdx !== undefined && studentQIdx !== -1) {
-          // 학생이 이 문제를 풀었던 경우
           const studentAnswerIdx = r.answers[studentQIdx];
           const isCorrect = studentAnswerIdx === examQ.answerIndex;
           const studentAnswerText = studentAnswerIdx !== undefined ? examQ.options[studentAnswerIdx] : '선택 안함';
@@ -508,7 +495,6 @@ export default function App() {
           baseRow.push(isCorrect ? 'O' : 'X');
           baseRow.push(studentAnswerText);
         } else {
-          // 랜덤 출제(displayCount) 제한으로 이 문제를 풀지 않은 경우
           baseRow.push('-');
           baseRow.push('출제되지 않음');
         }
@@ -516,7 +502,6 @@ export default function App() {
       return baseRow;
     });
 
-    // CSV 특수문자(쉼표, 줄바꿈) 깨짐 방지를 위한 텍스트 이스케이프 처리
     const escapeCSV = (str: any) => `"${String(str).replace(/"/g, '""')}"`;
     const csvContent = [headers.map(escapeCSV), ...rows.map(row => row.map(escapeCSV))].map(e => e.join(",")).join("\n");
     
@@ -650,7 +635,8 @@ export default function App() {
 
                      <div className="space-y-4">
                        <h4 className="font-bold text-slate-700">보관된 문제 목록 (총 {questionBank.length}개)</h4>
-                       {questionBank.map((q, idx) => (
+                       {/* 💡 [수정됨] 사용하지 않는 변수 에러(TS6133) 해결을 위해 idx 제거 */}
+                       {questionBank.map((q) => (
                          <div key={q.id} className="bg-white p-5 rounded-2xl border flex flex-col sm:flex-row justify-between gap-4 group hover:border-blue-300 transition-colors">
                            <div className="flex-1">
                              <p className="font-bold text-slate-800 line-clamp-2"><span className="text-blue-400 mr-2">Q.</span>{q.text}</p>
@@ -669,7 +655,6 @@ export default function App() {
 
                 {adminTab === 'analytics' && (
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* 상단: 시험 선택기 및 엑셀 다운로드 버튼 */}
                     <div className="lg:col-span-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 sm:p-6 rounded-[2rem] border shadow-sm">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
                         <h3 className="text-lg font-bold text-slate-800 whitespace-nowrap">분석할 시험 선택</h3>
@@ -755,7 +740,7 @@ export default function App() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                   <button onClick={() => setView('admin-dash')} className="text-2xl hover:bg-white p-2 rounded-full transition-colors shrink-0">⬅️</button>
                   <div className="flex-1 w-full flex flex-col gap-1">
-                     <input value={newExamTitle} onChange={e => setNewExamTitle(e.target.value)} className="w-full text-2xl sm:text-3xl font-black outline-none bg-transparent border-b-2 border-transparent focus:border-blue-500 transition-all text-slate-800" placeholder="시험 제목"/>
+                     <input value={newExamTitle} onChange={e => setNewExamTitle(e.target.value)} className="w-full text-2xl sm:text-3xl font-black outline-none bg-transparent border-b-2 border-transparent focus:border-blue-50 transition-all text-slate-800" placeholder="시험 제목"/>
                      <div className="flex flex-wrap items-center gap-2 mt-2">
                         <span className="text-xs font-bold text-slate-400">시험 코드(ID):</span>
                         <input value={customExamId} onChange={e => setCustomExamId(e.target.value)} className="text-xs font-mono bg-blue-50 text-blue-600 px-2 py-1 rounded outline-none border border-blue-100 min-w-[150px]" placeholder="미입력시 자동생성"/>
@@ -816,7 +801,6 @@ export default function App() {
                 </div>
                 
                 <div className="space-y-6">
-                  {/* --- 창고에서 불러오기 버튼 --- */}
                   <button onClick={() => setIsBankModalOpen(true)} className="w-full py-5 bg-blue-50 text-blue-600 border-2 border-blue-200 border-dashed rounded-[2.5rem] font-black text-lg hover:bg-blue-100 hover:border-blue-300 transition-all shadow-sm">
                     🗃️ 문제 창고에서 선택해서 불러오기
                   </button>
